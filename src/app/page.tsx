@@ -1,208 +1,328 @@
+import Image from "next/image";
 import Link from "next/link";
 
-import { MemberCard } from "@/components/member-card";
-import { MetricCard } from "@/components/metric-card";
-import { getAllMembers, getBills, getRecentVotes, getSiteOverview, getStates } from "@/lib/congress-data";
+import { getAllMembers, getBills, getRecentVotes, getSiteOverview, getStates, type Vote } from "@/lib/congress-data";
 
-export default async function HomePage() {
-  const [overview, members, recentVotes, bills, states] = await Promise.all([
-    getSiteOverview(),
-    getAllMembers(),
-    getRecentVotes(6),
-    getBills(6),
-    getStates(),
-  ]);
+function formatCompactNumber(value: number) {
+  return new Intl.NumberFormat("en-US").format(value);
+}
 
-  const houseMembers = members.filter((member) => member.chamber === "house");
-  const senateMembers = members.filter((member) => member.chamber === "senate");
-  const houseDemocrats = houseMembers.filter((member) => member.partyCode === "D").length;
-  const houseRepublicans = houseMembers.filter((member) => member.partyCode === "R").length;
-  const senateDemocrats = senateMembers.filter((member) => member.partyCode === "D").length;
-  const senateRepublicans = senateMembers.filter((member) => member.partyCode === "R").length;
+function formatLongDate(value: string | null) {
+  if (!value) return "Unavailable";
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) return value;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(parsed));
+}
+
+function formatCongressOrdinal(value: number) {
+  const mod10 = value % 10;
+  const mod100 = value % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${value}st`;
+  if (mod10 === 2 && mod100 !== 12) return `${value}nd`;
+  if (mod10 === 3 && mod100 !== 13) return `${value}rd`;
+  return `${value}th`;
+}
+
+function StatCard({
+  label,
+  value,
+  detail,
+  icon,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  icon: string;
+}) {
+  return (
+    <article className="rounded-[1.1rem] border border-[var(--border)] bg-white px-4 py-4 shadow-[0_8px_22px_rgba(12,33,58,0.05)]">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs text-[var(--muted)]">{label}</p>
+          <p className="mt-2 font-serif text-[2rem] leading-none text-[var(--ink)]">{value}</p>
+          <p className="mt-2 text-xs leading-5 text-[var(--muted)]">{detail}</p>
+        </div>
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--surface)] text-xl text-[var(--navy)]">
+          <span aria-hidden="true">{icon}</span>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function ChamberBreakdown({
+  title,
+  total,
+  democrats,
+  republicans,
+  others,
+  href,
+}: {
+  title: string;
+  total: number;
+  democrats: number;
+  republicans: number;
+  others: number;
+  href: string;
+}) {
+  const totalForBar = Math.max(total, 1);
+  const democratWidth = (democrats / totalForBar) * 100;
+  const otherWidth = (others / totalForBar) * 100;
+  const republicanWidth = (republicans / totalForBar) * 100;
 
   return (
-    <main className="pb-20">
-      <section className="border-b border-[var(--border)] bg-[linear-gradient(180deg,_rgba(255,255,255,0.84),_rgba(247,244,238,0.94))]">
-        <div className="mx-auto grid w-full max-w-7xl gap-10 px-5 py-12 lg:grid-cols-[1.15fr_0.85fr] lg:px-8 lg:py-16">
-          <div>
-            <div className="inline-flex rounded-full border border-[var(--border)] bg-white px-4 py-2 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-              119th Congress · Current members only
-            </div>
-            <h1 className="mt-6 max-w-4xl font-serif text-5xl leading-[1.02] text-[var(--ink)] sm:text-6xl">
-              Congress deserves the same scrutiny as the presidency.
+    <article className="border-t border-[var(--border)] px-5 py-5 first:border-t-0">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ink)]">{title}</p>
+      <div className="mt-4 grid grid-cols-3 gap-3">
+        <div>
+          <p className="font-serif text-[2.15rem] leading-none text-[var(--ink)]">{total}</p>
+          <p className="mt-2 text-xs text-[var(--muted)]">Total Members</p>
+        </div>
+        <div>
+          <p className="text-[2rem] font-semibold leading-none text-[var(--accent-blue)]">{democrats}</p>
+          <p className="mt-2 text-xs text-[var(--muted)]">Democrats</p>
+        </div>
+        <div>
+          <p className="text-[2rem] font-semibold leading-none text-[var(--accent-red)]">{republicans}</p>
+          <p className="mt-2 text-xs text-[var(--muted)]">{others > 0 ? `Republicans · ${others} other` : "Republicans"}</p>
+        </div>
+      </div>
+      <div className="mt-4 flex h-2 overflow-hidden rounded-full bg-[var(--surface)]">
+        <span className="bg-[var(--accent-blue)]" style={{ width: `${democratWidth}%` }} />
+        {others > 0 ? <span className="bg-[#9aa6b4]" style={{ width: `${otherWidth}%` }} /> : null}
+        <span className="bg-[var(--accent-red)]" style={{ width: `${republicanWidth}%` }} />
+      </div>
+      <Link href={href} className="mt-4 inline-flex items-center text-sm font-medium text-[var(--accent-blue)]">
+        View all {title.toLowerCase()} →
+      </Link>
+    </article>
+  );
+}
+
+function VoteTableRow({ vote }: { vote: Vote }) {
+  return (
+    <tr className="border-t border-[var(--border)]">
+      <td className="px-4 py-3 align-top text-sm text-[var(--muted)]">{formatLongDate(vote.timestamp)}</td>
+      <td className="px-4 py-3 align-top text-sm text-[var(--ink)]">
+        <Link href={`/votes/${vote.chamber}/${vote.congress}/${vote.session}/${vote.rollCallNumber}`} className="font-medium text-[var(--ink)] hover:text-[var(--accent-blue)]">
+          {vote.title}
+        </Link>
+        <p className="mt-1 max-w-[19rem] leading-6 text-[var(--muted)]">{vote.question}</p>
+      </td>
+      <td className="px-4 py-3 align-top text-sm text-[var(--accent-blue)]">{vote.yeaCount ?? "—"}</td>
+      <td className="px-4 py-3 align-top text-sm text-[var(--accent-red)]">{vote.nayCount ?? "—"}</td>
+      <td className="px-4 py-3 align-top text-sm text-[var(--muted)]">{vote.result}</td>
+    </tr>
+  );
+}
+
+export default async function HomePage() {
+  const [overview, states, votes, bills, members] = await Promise.all([
+    getSiteOverview(),
+    getStates(),
+    getRecentVotes(5),
+    getBills(5),
+    getAllMembers(),
+  ]);
+
+  const allMembers = overview.totalMembers;
+  const houseMembers = overview.houseMembers;
+  const senateMembers = overview.senateMembers;
+  const houseDelegation = members.filter((member) => member.chamber === "house");
+  const senateDelegation = members.filter((member) => member.chamber === "senate");
+  const houseDemocrats = houseDelegation.filter((member) => member.partyCode === "D").length;
+  const houseRepublicans = houseDelegation.filter((member) => member.partyCode === "R").length;
+  const houseOthers = Math.max(houseDelegation.length - houseDemocrats - houseRepublicans, 0);
+  const senateDemocrats = senateDelegation.filter((member) => member.partyCode === "D").length;
+  const senateRepublicans = senateDelegation.filter((member) => member.partyCode === "R").length;
+  const senateOthers = Math.max(senateDelegation.length - senateDemocrats - senateRepublicans, 0);
+
+  return (
+    <main className="mx-auto w-full max-w-[1280px] px-5 pb-14 pt-8 lg:px-8">
+      <section className="overflow-hidden rounded-[1.7rem] border border-[var(--border)] bg-white shadow-[0_18px_48px_rgba(15,35,58,0.08)]">
+        <div className="grid lg:grid-cols-[0.8fr_1.2fr]">
+          <div className="relative z-10 px-8 py-10 lg:px-10 lg:py-12">
+            <h1 className="max-w-[12ch] font-serif text-[3.4rem] leading-[0.96] tracking-[-0.03em] text-[var(--navy)] lg:text-[4.1rem]">
+              Congress deserves the same scrutiny as the presidency
             </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-[var(--muted)]">
-              Source-linked data on the people, votes, committees, and legislation shaping federal law. Built to help the public see what current members of Congress are actually doing.
+            <div className="mt-6 h-[2px] w-16 bg-[var(--accent-red)]" />
+            <p className="mt-6 max-w-[28rem] text-[1.05rem] leading-8 text-[var(--muted)]">
+              Nonpartisan data on the people, votes, and legislation shaping our laws.
             </p>
-            <form action="/search" className="mt-8 flex flex-col gap-3 rounded-[1.5rem] border border-[var(--border)] bg-white p-4 shadow-[0_18px_48px_rgba(12,33,58,0.06)] sm:flex-row">
-              <input
-                type="search"
-                name="q"
-                placeholder="Search by member name or state"
-                className="w-full rounded-full border border-[var(--border)] px-4 py-3 outline-none focus:border-[var(--accent-blue)]"
+            <div className="mt-8 flex flex-wrap items-center gap-5">
+              <Link href="/house" className="button-primary px-5 py-3 text-sm font-semibold">
+                Browse current members
+              </Link>
+              <Link href="/states" className="text-sm font-semibold text-[var(--accent-blue)]">
+                By State →
+              </Link>
+              <Link href="/search" className="text-sm font-semibold text-[var(--accent-blue)]">
+                By Party →
+              </Link>
+            </div>
+          </div>
+          <div className="relative min-h-[300px] overflow-hidden bg-[linear-gradient(180deg,rgba(236,243,250,0.85),rgba(247,244,238,0.3))]">
+            <div className="absolute inset-y-0 left-0 z-10 w-28 bg-gradient-to-r from-white via-white/75 to-transparent" />
+            <Image
+              src="/reference-assets/capitol-west-front.jpg"
+              alt="United States Capitol west front"
+              fill
+              priority
+              className="object-cover object-center"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-4 grid gap-4 lg:grid-cols-5">
+        <StatCard
+          label="Current Congress"
+          value={`${formatCongressOrdinal(overview.currentCongress)} Congress`}
+          detail="Jan 3, 2025 – Jan 3, 2027"
+          icon="◌"
+        />
+        <StatCard
+          label="Total Members"
+          value={formatCompactNumber(allMembers)}
+          detail={`${houseMembers} House · ${senateMembers} Senate`}
+          icon="◍"
+        />
+        <StatCard
+          label="States Covered"
+          value={formatCompactNumber(overview.statesCount)}
+          detail="All current delegations"
+          icon="◔"
+        />
+        <StatCard
+          label="Recent Roll Calls"
+          value={formatCompactNumber(overview.recentVoteCount)}
+          detail="Latest official vote records"
+          icon="◷"
+        />
+        <StatCard
+          label="Bills Tracked"
+          value={formatCompactNumber(bills.length)}
+          detail="Recent current-Congress legislation"
+          icon="▣"
+        />
+      </section>
+
+      <section className="mt-4 grid gap-4 lg:grid-cols-[1.03fr_0.95fr_1.35fr]">
+        <div className="overflow-hidden rounded-[1.1rem] border border-[var(--border)] bg-white shadow-[0_10px_28px_rgba(15,35,58,0.05)]">
+          <div className="bg-[var(--navy)] px-5 py-4">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-white">Congress at a glance</h2>
+          </div>
+          <ChamberBreakdown
+            title="U.S. House of Representatives"
+            total={houseMembers}
+            democrats={houseDemocrats}
+            republicans={houseRepublicans}
+            others={houseOthers}
+            href="/house"
+          />
+          <ChamberBreakdown
+            title="U.S. Senate"
+            total={senateMembers}
+            democrats={senateDemocrats}
+            republicans={senateRepublicans}
+            others={senateOthers}
+            href="/senate"
+          />
+        </div>
+
+        <div className="overflow-hidden rounded-[1.1rem] border border-[var(--border)] bg-white shadow-[0_10px_28px_rgba(15,35,58,0.05)]">
+          <div className="border-b border-[var(--border)] px-5 py-4">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-[var(--navy)]">Browse by state</h2>
+          </div>
+          <div className="px-5 py-5">
+            <div className="rounded-[1rem] bg-[var(--surface)] px-3 py-3">
+              <Image
+                src="/reference-assets/us-map.svg"
+                alt="Map of the United States"
+                width={640}
+                height={396}
+                className="h-auto w-full opacity-80"
               />
-              <button className="button-primary px-6 py-3 text-sm font-semibold">Search</button>
+            </div>
+            <form action="/states" className="mt-4">
+              <select className="w-full rounded-[0.85rem] border border-[var(--border)] bg-white px-3 py-2.5 text-sm text-[var(--muted)] outline-none">
+                <option>Select a state</option>
+                {states.map((state) => (
+                  <option key={state.code}>{state.name}</option>
+                ))}
+              </select>
             </form>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link href="/states" className="button-primary px-5 py-3 text-sm font-semibold">
-                Browse by state
-              </Link>
-              <Link href="/votes" className="rounded-full border border-[var(--border)] bg-white px-5 py-3 text-sm font-semibold text-[var(--ink)]">
-                See latest votes
-              </Link>
-            </div>
           </div>
+        </div>
 
-          <div className="rounded-[2rem] border border-[var(--border)] bg-white p-6 shadow-[0_20px_60px_rgba(12,33,58,0.08)]">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold tracking-[0.08em] text-[var(--navy)]">Congress at a glance</p>
-              <Link href="/states" className="text-sm text-[var(--accent-blue)]">
-                Browse all states
-              </Link>
-            </div>
-            <div className="mt-6 space-y-5">
-              <article className="rounded-[1.25rem] bg-[var(--surface)] p-4">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">U.S. House of Representatives</p>
-                <div className="mt-3 grid grid-cols-3 gap-4">
-                  <div>
-                    <p className="font-serif text-4xl text-[var(--ink)]">{overview.houseMembers}</p>
-                    <p className="text-xs text-[var(--muted)]">Voting members</p>
-                  </div>
-                  <div>
-                    <p className="text-3xl font-semibold text-[var(--accent-blue)]">{houseDemocrats}</p>
-                    <p className="text-xs text-[var(--muted)]">Democrats</p>
-                  </div>
-                  <div>
-                    <p className="text-3xl font-semibold text-[var(--accent-red)]">{houseRepublicans}</p>
-                    <p className="text-xs text-[var(--muted)]">Republicans</p>
-                  </div>
-                </div>
-              </article>
-              <article className="rounded-[1.25rem] bg-[var(--surface)] p-4">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">U.S. Senate</p>
-                <div className="mt-3 grid grid-cols-3 gap-4">
-                  <div>
-                    <p className="font-serif text-4xl text-[var(--ink)]">{overview.senateMembers}</p>
-                    <p className="text-xs text-[var(--muted)]">Senators</p>
-                  </div>
-                  <div>
-                    <p className="text-3xl font-semibold text-[var(--accent-blue)]">{senateDemocrats}</p>
-                    <p className="text-xs text-[var(--muted)]">Democrats</p>
-                  </div>
-                  <div>
-                    <p className="text-3xl font-semibold text-[var(--accent-red)]">{senateRepublicans}</p>
-                    <p className="text-xs text-[var(--muted)]">Republicans</p>
-                  </div>
-                </div>
-              </article>
-            </div>
+        <div className="overflow-hidden rounded-[1.1rem] border border-[var(--border)] bg-white shadow-[0_10px_28px_rgba(15,35,58,0.05)]">
+          <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-[var(--navy)]">Recent roll call votes</h2>
+            <Link href="/votes" className="text-sm font-medium text-[var(--accent-blue)]">
+              View all votes →
+            </Link>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border-collapse">
+              <thead>
+                <tr className="text-left">
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-[0.14em] text-[var(--muted)]">Date</th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-[0.14em] text-[var(--muted)]">Vote</th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-[0.14em] text-[var(--muted)]">Yea</th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-[0.14em] text-[var(--muted)]">Nay</th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-[0.14em] text-[var(--muted)]">Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                {votes.map((vote) => (
+                  <VoteTableRow key={vote.slug} vote={vote} />
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto grid w-full max-w-7xl gap-4 px-5 py-10 lg:grid-cols-5 lg:px-8">
-        <MetricCard label="Current Congress" value={`${overview.currentCongress}th`} detail="Official roster data" />
-        <MetricCard label="Total members" value={String(overview.totalMembers)} detail="House and Senate combined" />
-        <MetricCard label="States covered" value={String(overview.statesCount)} detail="All 50 states" />
-        <MetricCard label="Recent roll calls" value={String(overview.recentVoteCount)} detail="Latest imported votes" />
-        <MetricCard label="Recent missed votes" value={String(overview.missedVoteCount)} detail="From latest roll-call records" />
-      </section>
-
-      <section className="mx-auto grid w-full max-w-7xl gap-8 px-5 py-8 lg:grid-cols-[1.1fr_0.9fr] lg:px-8">
-        <div className="rounded-[1.75rem] border border-[var(--border)] bg-white p-6 shadow-[0_18px_50px_rgba(12,33,58,0.05)]">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">Browse by state</p>
-              <h2 className="mt-3 font-serif text-3xl text-[var(--ink)]">Start with your delegation.</h2>
-            </div>
-            <Link href="/states" className="text-sm text-[var(--accent-blue)]">
-              View all
-            </Link>
+      <section className="mt-4 rounded-[1.1rem] border border-[var(--border)] bg-white px-5 py-4 shadow-[0_10px_28px_rgba(15,35,58,0.05)]">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-[var(--navy)]">Find a member of Congress</h2>
+            <p className="mt-2 text-sm text-[var(--muted)]">Search by name, state, district, or zip code.</p>
           </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {states.slice(0, 12).map((state) => (
-              <Link key={state.code} href={`/states/${state.slug}`} className="rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface)] px-4 py-4 transition hover:border-[var(--accent-blue)]">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">{state.code}</p>
-                <p className="mt-2 font-medium text-[var(--ink)]">{state.name}</p>
-              </Link>
-            ))}
+          <div className="text-xs text-[var(--muted)]">
+            Data is sourced from official congressional records.
           </div>
         </div>
-
-        <div className="rounded-[1.75rem] border border-[var(--border)] bg-white p-6 shadow-[0_18px_50px_rgba(12,33,58,0.05)]">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">Recent roll-call votes</p>
-              <h2 className="mt-3 font-serif text-3xl text-[var(--ink)]">Latest recorded action</h2>
-            </div>
-            <Link href="/votes" className="text-sm text-[var(--accent-blue)]">
-              All votes
-            </Link>
-          </div>
-          <div className="mt-6 space-y-4">
-            {recentVotes.map((vote) => (
-              <Link
-                key={vote.slug}
-                href={`/votes/${vote.chamber}/${vote.congress}/${vote.session}/${vote.rollCallNumber}`}
-                className="block rounded-[1.25rem] border border-[var(--border)] px-4 py-4 transition hover:border-[var(--accent-blue)]"
-              >
-                <div className="flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
-                  <span>{vote.chamber}</span>
-                  <span>Roll {vote.rollCallNumber}</span>
-                </div>
-                <h3 className="mt-3 text-base font-semibold leading-7 text-[var(--ink)]">{vote.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{vote.result}</p>
-              </Link>
+        <form action="/search" className="mt-4 grid gap-3 lg:grid-cols-[1.25fr_0.7fr_0.7fr_0.7fr_0.45fr]">
+          <input
+            type="search"
+            name="q"
+            placeholder="Search by name..."
+            className="rounded-[0.9rem] border border-[var(--border)] bg-white px-4 py-3 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--accent-blue)]"
+          />
+          <select className="rounded-[0.9rem] border border-[var(--border)] bg-white px-4 py-3 text-sm text-[var(--muted)] outline-none">
+            <option>All States</option>
+            {states.map((state) => (
+              <option key={state.code}>{state.name}</option>
             ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto grid w-full max-w-7xl gap-8 px-5 py-8 lg:grid-cols-[1fr_1fr] lg:px-8">
-        <div className="rounded-[1.75rem] border border-[var(--border)] bg-white p-6 shadow-[0_18px_50px_rgba(12,33,58,0.05)]">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">Member profiles</p>
-              <h2 className="mt-3 font-serif text-3xl text-[var(--ink)]">Current members, one factual record each.</h2>
-            </div>
-            <Link href="/house" className="text-sm text-[var(--accent-blue)]">
-              Browse members
-            </Link>
-          </div>
-          <div className="mt-6 grid gap-5 xl:grid-cols-2">
-            {members.slice(0, 4).map((member) => (
-              <MemberCard key={member.bioguideId} member={member} />
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-[1.75rem] border border-[var(--border)] bg-white p-6 shadow-[0_18px_50px_rgba(12,33,58,0.05)]">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">Tracked legislation</p>
-              <h2 className="mt-3 font-serif text-3xl text-[var(--ink)]">Recent bills from the current Congress</h2>
-            </div>
-            <Link href="/bills" className="text-sm text-[var(--accent-blue)]">
-              All bills
-            </Link>
-          </div>
-          <div className="mt-6 space-y-4">
-            {bills.map((bill) => (
-              <Link
-                key={`${bill.billType}-${bill.billNumber}`}
-                href={`/bills/${bill.congress}/${bill.billType}/${bill.billNumber}`}
-                className="block rounded-[1.25rem] border border-[var(--border)] px-4 py-4 transition hover:border-[var(--accent-blue)]"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-[var(--ink)]">{bill.idLabel}</p>
-                  <span className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">{bill.originChamber ?? "Congress"}</span>
-                </div>
-                <p className="mt-2 text-base leading-7 text-[var(--ink)]">{bill.title}</p>
-                {bill.latestActionText ? <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{bill.latestActionText}</p> : null}
-              </Link>
-            ))}
-          </div>
-        </div>
+          </select>
+          <select className="rounded-[0.9rem] border border-[var(--border)] bg-white px-4 py-3 text-sm text-[var(--muted)] outline-none">
+            <option>All Chambers</option>
+            <option>House</option>
+            <option>Senate</option>
+          </select>
+          <select className="rounded-[0.9rem] border border-[var(--border)] bg-white px-4 py-3 text-sm text-[var(--muted)] outline-none">
+            <option>All Parties</option>
+            <option>Democrat</option>
+            <option>Republican</option>
+            <option>Independent</option>
+          </select>
+          <button className="button-primary px-5 py-3 text-sm font-semibold">Search</button>
+        </form>
       </section>
     </main>
   );

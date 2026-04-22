@@ -1,15 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --paper: #f7f4ee;
-  --surface: #eef1f6;
+  --paper: #f6f8fb;
+  --surface: #ffffff;
+  --surface-subtle: #f7f9fc;
   --navy: #0f2d4c;
   --ink: #13243a;
+  --ink-soft: #324960;
   --muted: #5f6d7d;
   --paper-muted: #c6d5e3;
-  --border: rgba(15, 45, 76, 0.12);
+  --border: rgba(15, 45, 76, 0.1);
+  --border-strong: rgba(15, 45, 76, 0.22);
   --accent-blue: #275db5;
   --accent-red: #b03035;
+  --shadow-card: 0 18px 42px rgba(15, 45, 76, 0.08);
+  --shadow-soft: 0 10px 24px rgba(15, 45, 76, 0.06);
 }
 
 @theme inline {
@@ -31,8 +36,8 @@ body {
   margin: 0;
   min-width: 320px;
   background:
-    radial-gradient(circle at top right, rgba(39, 93, 181, 0.08), transparent 32%),
-    radial-gradient(circle at top left, rgba(176, 48, 53, 0.06), transparent 28%),
+    linear-gradient(180deg, #f3f7fb 0, #f9fbfd 220px, var(--paper) 420px),
+    radial-gradient(circle at top right, rgba(39, 93, 181, 0.06), transparent 32%),
     var(--paper);
   color: var(--ink);
   font-family: var(--font-public-sans), sans-serif;
@@ -56,10 +61,13 @@ select {
   border-radius: 9999px;
   background: var(--navy);
   color: #ffffff;
+  box-shadow: var(--shadow-soft);
   transition:
     background-color 160ms ease,
     color 160ms ease,
-    opacity 160ms ease;
+    opacity 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .button-primary:hover,
@@ -71,6 +79,50 @@ select {
 
 .button-primary:hover {
   background: var(--ink);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(15, 45, 76, 0.14);
+}
+
+.site-shell-panel {
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.site-shell-card {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.site-shell-table {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow-soft);
+}
+
+.site-shell-kicker {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.site-shell-title {
+  color: var(--navy);
+  font-family: var(--font-libre-baskerville), serif;
+  letter-spacing: -0.03em;
+}
+
+.site-shell-input {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-subtle);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 ::selection {
