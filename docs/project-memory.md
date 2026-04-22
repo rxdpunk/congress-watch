@@ -53,6 +53,20 @@ Congress.Watch is a civic data website focused on current members of the U.S. Ho
 - Deployable and deployed on Vercel
 - Tested with lint/build and functional verification
 
+## Current Delivery State
+
+- GitHub repository: [rxdpunk/congress-watch](https://github.com/rxdpunk/congress-watch)
+- Production site: [congress-watch.vercel.app](https://congress-watch.vercel.app)
+- Vercel project scope: `illumios`
+- Production deploy model: direct Vercel CLI deployment
+- Automated refresh: Vercel cron calls `/api/refresh` hourly to warm live-data caches
+
+## Deployment Notes
+
+- The Vercel project is linked locally and deploys successfully.
+- GitHub auto-linking inside Vercel is not yet active because the Vercel account does not currently have a GitHub login connection configured for one-click repo linking.
+- This does not block production use; it only means deploys are currently CLI-driven instead of Git-push-triggered from Vercel.
+
 ## Open Risks
 
 - Official data source availability and authentication requirements may affect how much live data can be pulled automatically in V1.
@@ -63,3 +77,5 @@ Congress.Watch is a civic data website focused on current members of the U.S. Ho
 - Replace placeholder repo guidance with a real project `AGENTS.md`
 - Build a functional V1 site from the PRD, data architecture, sitemap, and reference images
 - Add durable project memory for future sessions
+- Publish the repo to GitHub and deploy the site to Vercel
+- Fix the live Senate feed parser so homepage and API counts match production

@@ -16,6 +16,11 @@ Congress.Watch is a source-linked civic website for tracking current members of 
 - Tests for derived data and official-source parsing
 - Project docs, copied PRDs, and saved UI reference images in [docs](/Users/sposato/Dev_Projects/Congress_Watch/docs)
 
+## Live links
+
+- Production: [congress-watch.vercel.app](https://congress-watch.vercel.app)
+- Repository: [rxdpunk/congress-watch](https://github.com/rxdpunk/congress-watch)
+
 ## Run locally
 
 ```bash
