@@ -49,6 +49,30 @@ select {
   font: inherit;
 }
 
+.button-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--navy);
+  color: #ffffff;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease;
+}
+
+.button-primary:hover,
+.button-primary:focus-visible,
+.button-primary:active,
+.button-primary:visited {
+  color: #ffffff;
+}
+
+.button-primary:hover {
+  background: var(--ink);
+}
+
 ::selection {
   background: rgba(39, 93, 181, 0.16);
 }

@@ -27,7 +27,7 @@ export default async function SearchPage({
           placeholder="Search members or states"
           className="w-full rounded-full border border-[var(--border)] px-4 py-3 outline-none focus:border-[var(--accent-blue)]"
         />
-        <button className="rounded-full bg-[var(--navy)] px-6 py-3 text-sm font-semibold text-white">Search</button>
+        <button className="button-primary px-6 py-3 text-sm font-semibold">Search</button>
       </form>
 
       {q ? (

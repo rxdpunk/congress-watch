@@ -41,10 +41,10 @@ export default async function HomePage() {
                 placeholder="Search by member name or state"
                 className="w-full rounded-full border border-[var(--border)] px-4 py-3 outline-none focus:border-[var(--accent-blue)]"
               />
-              <button className="rounded-full bg-[var(--navy)] px-6 py-3 text-sm font-semibold text-white">Search</button>
+              <button className="button-primary px-6 py-3 text-sm font-semibold">Search</button>
             </form>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link href="/states" className="rounded-full bg-[var(--navy)] px-5 py-3 text-sm font-semibold text-white">
+              <Link href="/states" className="button-primary px-5 py-3 text-sm font-semibold">
                 Browse by state
               </Link>
               <Link href="/votes" className="rounded-full border border-[var(--border)] bg-white px-5 py-3 text-sm font-semibold text-[var(--ink)]">

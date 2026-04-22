@@ -9,7 +9,7 @@ export default function NotFound() {
         The record may not exist, may have moved, or may not yet be available from the current source data.
       </p>
       <div className="mt-8 flex flex-wrap gap-3">
-        <Link href="/" className="rounded-full bg-[var(--navy)] px-5 py-3 text-sm font-semibold text-white">
+        <Link href="/" className="button-primary px-5 py-3 text-sm font-semibold">
           Return home
         </Link>
         <Link href="/search" className="rounded-full border border-[var(--border)] bg-white px-5 py-3 text-sm font-semibold text-[var(--ink)]">
